@@ -1,50 +1,65 @@
-export default function ProductCards({ products }) {
+import Link from "next/link";
+
+export default function ProductCards({
+  products,
+}) {
   return (
-    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="mt-6 space-y-4">
       {products.map((product) => (
         <div
           key={product.id}
-          className="rounded-xl bg-white p-5 shadow"
+          className="rounded-xl bg-white p-4 shadow"
         >
-          <div className="flex items-start gap-4">
+          <Link
+            href={`/products/${product.id}`}
+          >
             <img
               src={product.thumbnail}
               alt={product.title}
-              className="h-20 w-20 rounded-lg object-cover"
+              className="h-48 w-full rounded-lg object-cover"
             />
+          </Link>
 
-            <div className="min-w-0 flex-1">
-              <h2 className="truncate font-semibold text-gray-900">
-                {product.title}
-              </h2>
+          <div className="mt-4">
+            <Link
+              href={`/products/${product.id}`}
+              className="text-lg font-semibold text-gray-900 hover:underline"
+            >
+              {product.title}
+            </Link>
 
-              <p className="mt-1 text-sm capitalize text-gray-500">
-                {product.category}
-              </p>
-            </div>
-          </div>
+            <p className="mt-1 text-sm text-gray-500">
+              {product.category}
+            </p>
 
-          <div className="mt-5 grid grid-cols-3 gap-3 border-t pt-4">
-            <div>
-              <p className="text-xs text-gray-500">Price</p>
-              <p className="mt-1 font-semibold text-gray-900">
+            <div className="mt-3 flex items-center justify-between">
+              <span className="font-semibold text-gray-900">
                 ${product.price}
-              </p>
-            </div>
+              </span>
 
-            <div>
-              <p className="text-xs text-gray-500">Rating</p>
-              <p className="mt-1 font-semibold text-gray-900">
+              <span className="text-sm">
                 ⭐ {product.rating}
-              </p>
+              </span>
             </div>
 
-            <div>
-              <p className="text-xs text-gray-500">Stock</p>
-              <p className="mt-1 font-semibold text-gray-900">
-                {product.stock}
-              </p>
-            </div>
+            <p
+              className={`mt-2 text-sm font-medium ${
+                product.stock > 0
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {product.stock > 0
+                ? `${product.stock} in stock`
+                : "Out of stock"}
+            </p>
+
+            <Link
+              href={`/products/${product.id}`}
+              className="mt-4 block rounded-lg bg-black px-4 py-2 text-center text-sm font-medium text-white hover:bg-gray-800"
+            >
+              View Details
+            </Link>
           </div>
         </div>
       ))}

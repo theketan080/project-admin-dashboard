@@ -76,3 +76,20 @@ export const getProductsByCategory = async (
 
   return response.data;
 };
+
+/*
+ * Get single product by ID
+ */
+export const getProductById = async (
+  id,
+  signal
+) => {
+  const response = await apiClient.get(
+    `/products/${id}`,
+    {
+      signal,
+    }
+  );
+
+  return response.data;
+};
