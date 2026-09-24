@@ -609,24 +609,37 @@ export default function ProductsPage() {
       <div className="mx-auto max-w-7xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Product Dashboard
-            </h1>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h1 className="text-3xl font-bold text-gray-900">
+      Product Dashboard
+    </h1>
 
-            <p className="mt-1 text-gray-600">
-              Manage your products
-            </p>
-          </div>
+    <p className="mt-1 text-gray-600">
+      Manage your products
+    </p>
+  </div>
 
-          <button
-            onClick={handleLogout}
-            className="rounded-lg bg-black px-4 py-2 font-medium text-white hover:bg-gray-800"
-          >
-            Logout
-          </button>
-        </div>
+  <div className="flex items-center gap-3">
+    <button
+      type="button"
+      onClick={() =>
+        router.push("/products/add")
+      }
+      className="rounded-lg bg-black px-4 py-2 font-medium text-white hover:bg-gray-800"
+    >
+      + Add Product
+    </button>
+
+    <button
+      type="button"
+      onClick={handleLogout}
+      className="rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100"
+    >
+      Logout
+    </button>
+  </div>
+</div>
 
         {/* Search + Category + Sorting + Page Size */}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-4">

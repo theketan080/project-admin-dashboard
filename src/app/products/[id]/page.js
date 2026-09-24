@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
-import { getProductById } from "@/services/product.service";
+import {
+  deleteProduct,
+  getProductById,
+} from "@/services/product.service";
 
 export default function ProductDetailsPage() {
   const params = useParams();
@@ -13,12 +16,21 @@ export default function ProductDetailsPage() {
   const productId = params?.id;
 
   const [product, setProduct] = useState(null);
-  const [selectedImage, setSelectedImage] = useState("");
+  const [selectedImage, setSelectedImage] =
+    useState("");
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [deleting, setDeleting] =
+    useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] =
+    useState(false);
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token");
 
     if (!token) {
       router.replace("/login");
@@ -29,7 +41,8 @@ export default function ProductDetailsPage() {
       return;
     }
 
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
     const fetchProduct = async () => {
       try {
@@ -44,7 +57,9 @@ export default function ProductDetailsPage() {
         setProduct(data);
 
         setSelectedImage(
-          data.thumbnail || data.images?.[0] || ""
+          data.thumbnail ||
+            data.images?.[0] ||
+            ""
         );
       } catch (error) {
         if (
@@ -77,6 +92,37 @@ export default function ProductDetailsPage() {
   }, [productId, router]);
 
   /*
+   * Delete product
+   */
+  const handleDeleteProduct = async () => {
+    if (deleting) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError("");
+
+      await deleteProduct(productId);
+
+      setShowDeleteModal(false);
+
+      router.push("/products");
+    } catch (error) {
+      console.error(
+        "Failed to delete product:",
+        error
+      );
+
+      setError(
+        "Failed to delete product. Please try again."
+      );
+
+      setDeleting(false);
+    }
+  };
+
+  /*
    * Loading state
    */
   if (loading) {
@@ -96,7 +142,7 @@ export default function ProductDetailsPage() {
   /*
    * Not Found state
    */
-  if (error || !product) {
+  if (error && !product) {
     return (
       <main className="min-h-screen bg-gray-100 p-6">
         <div className="mx-auto max-w-5xl">
@@ -138,6 +184,15 @@ export default function ProductDetailsPage() {
           ← Back to Products
         </Link>
 
+        {/* API Error */}
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-600">
+              {error}
+            </p>
+          </div>
+        )}
+
         {/* Product Details */}
         <div className="overflow-hidden rounded-xl bg-white shadow">
 
@@ -155,7 +210,7 @@ export default function ProductDetailsPage() {
                 />
               </div>
 
-              {/* Thumbnail Images */}
+              {/* Thumbnails */}
               {images.length > 1 && (
                 <div className="mt-4 grid grid-cols-4 gap-3">
                   {images.map(
@@ -164,7 +219,9 @@ export default function ProductDetailsPage() {
                         key={`${image}-${index}`}
                         type="button"
                         onClick={() =>
-                          setSelectedImage(image)
+                          setSelectedImage(
+                            image
+                          )
                         }
                         className={`rounded-lg border-2 bg-white p-2 ${
                           selectedImage === image
@@ -206,7 +263,8 @@ export default function ProductDetailsPage() {
                 </span>
 
                 <span className="text-sm text-gray-500">
-                  {product.reviews?.length || 0}{" "}
+                  {product.reviews?.length ||
+                    0}{" "}
                   reviews
                 </span>
               </div>
@@ -268,6 +326,35 @@ export default function ProductDetailsPage() {
                   </p>
                 </div>
               )}
+
+              {/* Actions */}
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+
+                {/* Edit */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      `/products/${productId}/edit`
+                    )
+                  }
+                  className="rounded-lg border border-gray-300 px-5 py-2.5 font-medium text-gray-700 hover:bg-gray-100"
+                >
+                  Edit Product
+                </button>
+
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowDeleteModal(true)
+                  }
+                  disabled={deleting}
+                  className="rounded-lg bg-red-600 px-5 py-2.5 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Delete Product
+                </button>
+              </div>
             </div>
           </div>
 
@@ -316,6 +403,61 @@ export default function ProductDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-title"
+            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+          >
+            <h2
+              id="delete-title"
+              className="text-xl font-bold text-gray-900"
+            >
+              Delete Product?
+            </h2>
+
+            <p className="mt-2 text-gray-600">
+              Are you sure you want to delete{" "}
+              <strong>
+                {product.title}
+              </strong>
+              ? This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              {/* Cancel */}
+              <button
+                type="button"
+                onClick={() =>
+                  setShowDeleteModal(false)
+                }
+                disabled={deleting}
+                className="rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              {/* Confirm */}
+              <button
+                type="button"
+                onClick={
+                  handleDeleteProduct
+                }
+                disabled={deleting}
+                className="rounded-lg bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleting
+                  ? "Deleting..."
+                  : "Yes, Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

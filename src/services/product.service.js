@@ -77,9 +77,6 @@ export const getProductsByCategory = async (
   return response.data;
 };
 
-/*
- * Get single product by ID
- */
 export const getProductById = async (
   id,
   signal
@@ -89,6 +86,48 @@ export const getProductById = async (
     {
       signal,
     }
+  );
+
+  return response.data;
+};
+
+/*
+ * Add Product
+ */
+export const addProduct = async (
+  productData
+) => {
+  const response = await apiClient.post(
+    "/products/add",
+    productData
+  );
+
+  return response.data;
+};
+
+/*
+ * Update Product
+ */
+export const updateProduct = async (
+  id,
+  productData
+) => {
+  const response = await apiClient.put(
+    `/products/${id}`,
+    productData
+  );
+
+  return response.data;
+};
+
+/*
+ * Delete Product
+ */
+export const deleteProduct = async (
+  id
+) => {
+  const response = await apiClient.delete(
+    `/products/${id}`
   );
 
   return response.data;
