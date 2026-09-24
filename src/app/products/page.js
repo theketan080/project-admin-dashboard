@@ -1,5 +1,107 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function HomePage() {
-  redirect("/login");
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { loginUser } from "@/services/auth.service";
+
+export default function LoginPage() {
+  const router = useRouter();
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (loading) return;
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const data = await loginUser(username, password);
+
+      localStorage.setItem("token", data.accessToken);
+
+      // Use a full page navigation after login.
+      // This ensures the token is available before the
+      // protected products page checks authentication.
+      window.location.href = "/products";
+    } catch (error) {
+      console.error("Login failed:", error);
+
+      setError("Invalid username or password");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-md">
+        <h1 className="mb-2 text-3xl font-bold text-gray-900">
+          Admin Login
+        </h1>
+
+        <p className="mb-6 text-sm text-gray-500">
+          Login to manage your products
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="username"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              Username
+            </label>
+
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Enter username"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-black"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
+
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter password"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-black"
+            />
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-black px-4 py-2.5 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+      </div>
+    </main>
+  );
 }
