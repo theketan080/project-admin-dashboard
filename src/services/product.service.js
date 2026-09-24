@@ -3,12 +3,16 @@ import apiClient from "@/lib/axios";
 export const getProducts = async (
   limit = 10,
   skip = 0,
-  signal
+  signal,
+  sortBy = "",
+  order = ""
 ) => {
   const response = await apiClient.get("/products", {
     params: {
       limit,
       skip,
+      ...(sortBy && { sortBy }),
+      ...(order && { order }),
     },
     signal,
   });
@@ -20,7 +24,9 @@ export const searchProducts = async (
   query,
   limit = 10,
   skip = 0,
-  signal
+  signal,
+  sortBy = "",
+  order = ""
 ) => {
   const response = await apiClient.get(
     "/products/search",
@@ -29,6 +35,40 @@ export const searchProducts = async (
         q: query,
         limit,
         skip,
+        ...(sortBy && { sortBy }),
+        ...(order && { order }),
+      },
+      signal,
+    }
+  );
+
+  return response.data;
+};
+
+export const getCategories = async () => {
+  const response = await apiClient.get(
+    "/products/categories"
+  );
+
+  return response.data;
+};
+
+export const getProductsByCategory = async (
+  category,
+  limit = 10,
+  skip = 0,
+  signal,
+  sortBy = "",
+  order = ""
+) => {
+  const response = await apiClient.get(
+    `/products/category/${category}`,
+    {
+      params: {
+        limit,
+        skip,
+        ...(sortBy && { sortBy }),
+        ...(order && { order }),
       },
       signal,
     }

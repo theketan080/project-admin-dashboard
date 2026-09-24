@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   getProducts,
   searchProducts,
+  getCategories,
+  getProductsByCategory,
 } from "@/services/product.service";
 
 import ProductTable from "@/components/ProductTable";
@@ -14,6 +16,15 @@ import ProductCards from "@/components/ProductCards";
 const ALLOWED_PAGE_SIZES = [10, 20, 50];
 
 const SEARCH_DEBOUNCE_TIME = 500;
+
+const ALLOWED_SORTS = [
+  "price-asc",
+  "price-desc",
+  "rating-asc",
+  "rating-desc",
+  "title-asc",
+  "title-desc",
+];
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -46,6 +57,21 @@ export default function ProductsPage() {
     searchParams.get("search") || "";
 
   /*
+   * Category value from URL
+   */
+  const category =
+    searchParams.get("category") || "";
+
+  /*
+   * Sorting values from URL
+   */
+  const sortBy =
+    searchParams.get("sortBy") || "";
+
+  const order =
+    searchParams.get("order") || "";
+
+  /*
    * Search input state
    */
   const [searchInput, setSearchInput] =
@@ -57,6 +83,15 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
 
+  /*
+   * Category state
+   */
+  const [categories, setCategories] =
+    useState([]);
+
+  /*
+   * UI state
+   */
   const [loading, setLoading] =
     useState(true);
 
@@ -69,8 +104,19 @@ export default function ProductsPage() {
   const [retryCount, setRetryCount] =
     useState(0);
 
+  /*
+   * Total pages
+   */
   const totalPages =
     Math.ceil(total / pageSize);
+
+  /*
+   * Current sort option
+   */
+  const currentSort =
+    sortBy && order
+      ? `${sortBy}-${order}`
+      : "";
 
   /*
    * Keep search input synced with URL
@@ -78,6 +124,26 @@ export default function ProductsPage() {
   useEffect(() => {
     setSearchInput(searchQuery);
   }, [searchQuery]);
+
+  /*
+   * Fetch categories
+   */
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await getCategories();
+
+        setCategories(data);
+      } catch (error) {
+        console.error(
+          "Failed to fetch categories:",
+          error
+        );
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   /*
    * Debounced search
@@ -106,11 +172,19 @@ export default function ProductsPage() {
           "search",
           trimmedSearch
         );
+
+        /*
+         * Search and category cannot
+         * be combined.
+         */
+        params.delete("category");
       } else {
         params.delete("search");
       }
 
-      // Search always starts from page 1
+      /*
+       * Search starts from page 1
+       */
       params.set("page", "1");
 
       router.push(
@@ -152,18 +226,45 @@ export default function ProductsPage() {
 
         let data;
 
+        /*
+         * Search
+         */
         if (searchQuery) {
           data = await searchProducts(
             searchQuery,
             pageSize,
             skip,
-            controller.signal
+            controller.signal,
+            sortBy,
+            order
           );
-        } else {
+        }
+
+        /*
+         * Category
+         */
+        else if (category) {
+          data =
+            await getProductsByCategory(
+              category,
+              pageSize,
+              skip,
+              controller.signal,
+              sortBy,
+              order
+            );
+        }
+
+        /*
+         * Normal products
+         */
+        else {
           data = await getProducts(
             pageSize,
             skip,
-            controller.signal
+            controller.signal,
+            sortBy,
+            order
           );
         }
 
@@ -197,6 +298,9 @@ export default function ProductsPage() {
 
     fetchProducts();
 
+    /*
+     * Cancel previous request
+     */
     return () => {
       controller.abort();
     };
@@ -205,6 +309,9 @@ export default function ProductsPage() {
     page,
     pageSize,
     searchQuery,
+    category,
+    sortBy,
+    order,
     retryCount,
   ]);
 
@@ -225,7 +332,9 @@ export default function ProductsPage() {
 
     let shouldUpdate = false;
 
-    // Invalid page
+    /*
+     * Invalid page
+     */
     if (
       currentPage !== null &&
       (!Number.isInteger(
@@ -237,7 +346,9 @@ export default function ProductsPage() {
       shouldUpdate = true;
     }
 
-    // Invalid page size
+    /*
+     * Invalid page size
+     */
     if (
       currentPageSize !== null &&
       !ALLOWED_PAGE_SIZES.includes(
@@ -252,12 +363,52 @@ export default function ProductsPage() {
       shouldUpdate = true;
     }
 
+    /*
+     * Invalid sorting
+     */
+    if (
+      (sortBy || order) &&
+      !ALLOWED_SORTS.includes(
+        `${sortBy}-${order}`
+      )
+    ) {
+      params.delete("sortBy");
+      params.delete("order");
+
+      shouldUpdate = true;
+    }
+
     if (shouldUpdate) {
       router.replace(
         `/products?${params.toString()}`
       );
     }
   }, [
+    router,
+    searchParams,
+    sortBy,
+    order,
+  ]);
+
+  /*
+   * Search + category limitation
+   */
+  useEffect(() => {
+    if (searchQuery && category) {
+      const params =
+        new URLSearchParams(
+          searchParams.toString()
+        );
+
+      params.delete("category");
+
+      router.replace(
+        `/products?${params.toString()}`
+      );
+    }
+  }, [
+    searchQuery,
+    category,
     router,
     searchParams,
   ]);
@@ -335,6 +486,89 @@ export default function ProductsPage() {
   };
 
   /*
+   * Category change
+   */
+  const handleCategoryChange = (
+    event
+  ) => {
+    const selectedCategory =
+      event.target.value;
+
+    const params =
+      new URLSearchParams(
+        searchParams.toString()
+      );
+
+    /*
+     * Category and search
+     * cannot be combined.
+     */
+    params.delete("search");
+
+    setSearchInput("");
+
+    if (selectedCategory) {
+      params.set(
+        "category",
+        selectedCategory
+      );
+    } else {
+      params.delete("category");
+    }
+
+    /*
+     * Category starts from page 1
+     */
+    params.set("page", "1");
+
+    router.push(
+      `/products?${params.toString()}`
+    );
+  };
+
+  /*
+   * Sorting change
+   */
+  const handleSortChange = (
+    event
+  ) => {
+    const selectedSort =
+      event.target.value;
+
+    const params =
+      new URLSearchParams(
+        searchParams.toString()
+      );
+
+    if (!selectedSort) {
+      params.delete("sortBy");
+      params.delete("order");
+    } else {
+      const [newSortBy, newOrder] =
+        selectedSort.split("-");
+
+      params.set(
+        "sortBy",
+        newSortBy
+      );
+
+      params.set(
+        "order",
+        newOrder
+      );
+    }
+
+    /*
+     * Sorting starts from page 1
+     */
+    params.set("page", "1");
+
+    router.push(
+      `/products?${params.toString()}`
+    );
+  };
+
+  /*
    * Page size change
    */
   const handlePageSizeChange = (
@@ -394,11 +628,11 @@ export default function ProductsPage() {
           </button>
         </div>
 
-        {/* Search + Page Size */}
-        <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        {/* Search + Category + Sorting + Page Size */}
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
 
           {/* Search */}
-          <div className="w-full lg:max-w-md">
+          <div className="lg:col-span-1">
             <label
               htmlFor="search"
               className="mb-2 block text-sm font-medium text-gray-700"
@@ -418,13 +652,98 @@ export default function ProductsPage() {
             />
           </div>
 
+          {/* Category */}
+          <div>
+            <label
+              htmlFor="category"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Category
+            </label>
+
+            <select
+              id="category"
+              value={category}
+              onChange={
+                handleCategoryChange
+              }
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-black"
+            >
+              <option value="">
+                All Categories
+              </option>
+
+              {categories.map(
+                (categoryItem) => (
+                  <option
+                    key={
+                      categoryItem.slug
+                    }
+                    value={
+                      categoryItem.slug
+                    }
+                  >
+                    {categoryItem.name}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+
+          {/* Sorting */}
+          <div>
+            <label
+              htmlFor="sort"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Sort by
+            </label>
+
+            <select
+              id="sort"
+              value={currentSort}
+              onChange={
+                handleSortChange
+              }
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-black"
+            >
+              <option value="">
+                Default
+              </option>
+
+              <option value="price-asc">
+                Price: Low → High
+              </option>
+
+              <option value="price-desc">
+                Price: High → Low
+              </option>
+
+              <option value="rating-asc">
+                Rating: Low → High
+              </option>
+
+              <option value="rating-desc">
+                Rating: High → Low
+              </option>
+
+              <option value="title-asc">
+                Title: A → Z
+              </option>
+
+              <option value="title-desc">
+                Title: Z → A
+              </option>
+            </select>
+          </div>
+
           {/* Page Size */}
-          <div className="flex items-center gap-2">
+          <div>
             <label
               htmlFor="pageSize"
-              className="text-sm font-medium text-gray-700"
+              className="mb-2 block text-sm font-medium text-gray-700"
             >
-              Products per page:
+              Products per page
             </label>
 
             <select
@@ -433,7 +752,7 @@ export default function ProductsPage() {
               onChange={
                 handlePageSizeChange
               }
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black"
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-black"
             >
               <option value="10">
                 10
@@ -468,6 +787,32 @@ export default function ProductsPage() {
           </p>
         )}
 
+        {/* Active Filters */}
+        {!loading &&
+          !error &&
+          (category ||
+            currentSort) && (
+            <div className="mt-2 flex flex-wrap gap-2 text-sm text-gray-500">
+              {category && (
+                <span>
+                  Category:{" "}
+                  <strong className="text-gray-800">
+                    {category}
+                  </strong>
+                </span>
+              )}
+
+              {currentSort && (
+                <span>
+                  Sort:{" "}
+                  <strong className="text-gray-800">
+                    {currentSort}
+                  </strong>
+                </span>
+              )}
+            </div>
+          )}
+
         {/* Loading */}
         {loading && (
           <div className="mt-8 rounded-xl bg-white p-8 text-center shadow">
@@ -480,7 +825,6 @@ export default function ProductsPage() {
         {/* Error */}
         {!loading && error && (
           <div className="mt-8 rounded-xl bg-white p-8 text-center shadow">
-
             <p className="text-red-600">
               {error}
             </p>
@@ -589,10 +933,12 @@ export default function ProductsPage() {
               <p className="text-gray-600">
                 {searchQuery
                   ? `No products found for "${searchQuery}".`
-                  : "No products found."}
+                  : category
+                    ? `No products found in "${category}".`
+                    : "No products found."}
               </p>
-          </div>
-        )}
+            </div>
+          )}
       </div>
     </main>
   );
