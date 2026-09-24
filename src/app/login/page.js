@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { loginUser } from "@/services/auth.service";
 
 export default function LoginPage() {
@@ -24,16 +25,16 @@ export default function LoginPage() {
     try {
       const data = await loginUser(username, password);
 
-      console.log("Login successful:", data);
-
       localStorage.setItem("token", data.accessToken);
 
-      router.push("/products");
+      // Use a full page navigation after login.
+      // This ensures the token is available before the
+      // protected products page checks authentication.
+      window.location.href = "/products";
     } catch (error) {
       console.error("Login failed:", error);
 
       setError("Invalid username or password");
-    } finally {
       setLoading(false);
     }
   };
@@ -87,7 +88,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+            <p className="text-sm text-red-600">
               {error}
             </p>
           )}
@@ -95,7 +96,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-black px-4 py-2 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-black px-4 py-2.5 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
